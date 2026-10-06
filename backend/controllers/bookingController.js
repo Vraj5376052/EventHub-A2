@@ -1,6 +1,6 @@
 const Booking = require('../models/Booking');
 const Event = require('../models/Event');
-const selectRefundPolicy = require('../strategies/selectRefundPolicy');
+const RefundPolicyFactory = require('../patterns/RefundPolicyFactory');
 
 const generateReference = () =>
     'EH-' + Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -73,7 +73,7 @@ const getMyBookings = async (req, res) => {
                 const hoursUntilEvent =
                     (new Date(booking.eventId.startsAt) - Date.now()) / 3600000;
                 if (hoursUntilEvent > 0) {
-                    const policy = selectRefundPolicy(hoursUntilEvent);
+                    const policy = RefundPolicyFactory.getPolicy(hoursUntilEvent);
                     row.refundPreview = {
                         amount: policy.calculate(booking.eventId.price * booking.quantity),
                         policy: policy.name,
@@ -114,7 +114,7 @@ const cancelBooking = async (req, res) => {
 
         // The controller never knows which rule it got. It asks for a policy
         // and uses whatever comes back.
-        const policy = selectRefundPolicy(hoursUntilEvent);
+        const policy = RefundPolicyFactory.getPolicy(hoursUntilEvent);
         const refundAmount = policy.calculate(event.price * booking.quantity);
 
         // Atomic: only the first request to find this booking still 'confirmed'

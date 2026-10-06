@@ -1,9 +1,9 @@
 /**
  * RefundPolicy
  *
- * The Strategy interface. Every refund rule in the system is a subclass of
- * this, and the cancellation controller works against this type only, so it
- * never needs to know which rule it is holding.
+ * Base class for the products the RefundPolicyFactory creates. Every refund
+ * rule is a subclass, and the cancellation controller works against this type
+ * only, so it never needs to know which rule it is holding.
  *
  * Subclasses must provide:
  *   name        a label stored on the booking and shown to the customer
