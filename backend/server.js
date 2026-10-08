@@ -15,6 +15,8 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/admin', require('./routes/auditRoutes'));
 
 // Export the app object for testing
 if (require.main === module) {

@@ -1,6 +1,15 @@
 const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const RefundPolicyFactory = require('../patterns/RefundPolicyFactory');
+const auditLogger = require('../patterns/AuditLogger');
+const { notify } = require('../notifications');
+
+// Warn the organiser once an event is down to its last tenth, with a floor of
+// one seat so small events still trigger it.
+const isNearlyFull = (event) => {
+    const remaining = event.capacity - event.bookedSeats;
+    return remaining > 0 && remaining <= Math.max(1, Math.ceil(event.capacity * 0.1));
+};
 
 const generateReference = () =>
     'EH-' + Math.random().toString(36).slice(2, 7).toUpperCase();
@@ -49,6 +58,34 @@ const createBooking = async (req, res) => {
                 quantity: qty,
                 reference: generateReference(),
             });
+
+            // None of these are awaited (FR-09, FR-10, NFR-04). The seats are
+            // taken and the booking is saved, so the customer gets their 201
+            // whatever happens to the trail or the notification.
+            auditLogger.record(
+                req.user,
+                auditLogger.ACTIONS.BOOKING_CREATED,
+                'Booking',
+                booking._id,
+                `${qty} x ${event.title}`
+            );
+
+            notify('BookingConfirmed', req.user.id, {
+                eventTitle: event.title,
+                quantity: qty,
+                reference: booking.reference,
+                relatedId: booking._id,
+            });
+
+            if (isNearlyFull(event)) {
+                notify('CapacityWarning', event.organiserId, {
+                    eventTitle: event.title,
+                    seatsRemaining: event.capacity - event.bookedSeats,
+                    capacity: event.capacity,
+                    relatedId: event._id,
+                });
+            }
+
             return res.status(201).json({ booking, event });
         } catch (bookingError) {
             // The seats were reserved but the booking record failed — give them back.
@@ -142,6 +179,23 @@ const cancelBooking = async (req, res) => {
             );
             throw seatError;
         }
+
+        // Again not awaited. The cancellation and the seat release are both
+        // done; telling the customer and recording it must not undo that.
+        auditLogger.record(
+            req.user,
+            auditLogger.ACTIONS.BOOKING_CANCELLED,
+            'Booking',
+            cancelled._id,
+            `refund ${refundAmount} under ${policy.name}`
+        );
+
+        notify('BookingCancelled', req.user.id, {
+            eventTitle: event.title,
+            refundAmount,
+            reason: 'customer_cancelled',
+            relatedId: cancelled._id,
+        });
 
         return res.json({
             booking: cancelled,

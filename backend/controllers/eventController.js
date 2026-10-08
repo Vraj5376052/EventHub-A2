@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const auditLogger = require('../patterns/AuditLogger');
 
 const createEvent = async (req, res) => {
     const { title, description, venue, startsAt, capacity, price } = req.body;
@@ -32,6 +33,17 @@ const createEvent = async (req, res) => {
             capacity: Number(capacity),
             price: Number(price),
         });
+
+        // Not awaited. The event is already created, and the response must not
+        // wait on the audit trail or fail because of it (FR-10, NFR-04).
+        auditLogger.record(
+            req.user,
+            auditLogger.ACTIONS.EVENT_CREATED,
+            'Event',
+            event._id,
+            `capacity ${event.capacity}`
+        );
+
         res.status(201).json(event);
     } catch (error) {
         res.status(500).json({ message: error.message });
