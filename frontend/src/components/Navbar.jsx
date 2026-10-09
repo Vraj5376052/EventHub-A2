@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -28,6 +29,10 @@ const Navbar = () => {
                 <Link to="/my-bookings" className="mr-4">My Bookings</Link>
               </>
             )}
+            {user.role === 'admin' && (
+              <Link to="/audit" className="mr-4">Audit Trail</Link>
+            )}
+            <NotificationBell />
             <Link to="/profile" className="mr-4">Profile</Link>
             <button
               onClick={handleLogout}
