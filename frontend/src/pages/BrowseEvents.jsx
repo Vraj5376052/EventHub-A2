@@ -9,6 +9,7 @@ const BrowseEvents = () => {
   const [qty, setQty] = useState({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState({ id: '', type: '', text: '' });
+  const [sortOrder, setSortOrder] = useState('soonest');
 
   const load = useCallback(async () => {
     try {
@@ -44,11 +45,38 @@ const BrowseEvents = () => {
   };
 
   if (!user) return <p className="text-center mt-20">Please log in.</p>;
+
+  const sortedEvents = [...events].sort((a, b) => {
+  const firstDate = new Date(a.startsAt);
+  const secondDate = new Date(b.startsAt);
+
+  return sortOrder === 'latest'
+    ? secondDate - firstDate
+    : firstDate - secondDate;
+});
   if (loading) return <p className="text-center mt-20">Loading events…</p>;
 
   return (
     <div className="max-w-3xl mx-auto mt-10 px-4">
-      <h1 className="text-2xl font-bold mb-6">Browse Events</h1>
+     <div className="flex justify-between items-center mb-6">
+  <h1 className="text-2xl font-bold">Browse Events</h1>
+
+  <div className="flex items-center gap-2">
+    <label htmlFor="event-sort" className="text-sm font-medium">
+      Sort by
+    </label>
+
+    <select
+      id="event-sort"
+      value={sortOrder}
+      onChange={(e) => setSortOrder(e.target.value)}
+      className="border rounded px-3 py-2"
+    >
+      <option value="soonest">Soonest first</option>
+      <option value="latest">Latest first</option>
+    </select>
+  </div>
+</div>
 
       {events.length === 0 ? (
         <div className="bg-white p-8 rounded shadow text-center text-gray-500">
@@ -57,7 +85,7 @@ const BrowseEvents = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {events.map((ev) => {
+          {sortedEvents.map((ev) => {
             const remaining = ev.capacity - ev.bookedSeats;
             const soldOut = remaining <= 0;
             return (
