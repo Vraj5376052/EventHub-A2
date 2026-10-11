@@ -12,13 +12,18 @@ const protect = async (req, res, next) => {
             req.user = await User.findById(decoded.id).select('-password');
             next();
         } catch (error) {
-            res.status(401).json({ message: 'Not authorized, token failed' });
+            // Return, or the guard below sends a second response on the same
+            // request and Express throws ERR_HTTP_HEADERS_SENT, which brings
+            // the whole process down. A request carrying an empty bearer hits
+            // both branches: jwt.verify throws because the token is '', and ''
+            // is also falsy, so without this return one malformed header is
+            // enough to stop the server for everybody.
+            return res.status(401).json({ message: 'Not authorized, token failed' });
         }
+        return;
     }
 
-    if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
-    }
+    return res.status(401).json({ message: 'Not authorized, no token' });
 };
 
 const requireRole = (...roles) => {
