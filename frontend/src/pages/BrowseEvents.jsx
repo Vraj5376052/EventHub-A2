@@ -10,6 +10,11 @@ const BrowseEvents = () => {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState({ id: '', type: '', text: '' });
   const [sortOrder, setSortOrder] = useState('soonest');
+  const [eligibleEventIds, setEligibleEventIds] = useState([]);
+  const [reviewRatings, setReviewRatings] = useState({});
+  const [reviewComments, setReviewComments] = useState({});
+  const [reviewBusy, setReviewBusy] = useState('');
+  const [reviewMsg, setReviewMsg] = useState({ id: '', type: '', text: '' });
 
   const load = useCallback(async () => {
     try {
@@ -17,6 +22,21 @@ const BrowseEvents = () => {
         headers: { Authorization: `Bearer ${user.token}` },
       });
       setEvents(res.data);
+      if (user.role === 'customer') {
+        try {
+          const bookingsRes = await axiosInstance.get('/api/bookings/mine', {
+            headers: { Authorization: `Bearer ${user.token}` },
+          });
+          const eligibleIds = bookingsRes.data
+            .filter((booking) => booking.status === 'confirmed'
+              && booking.eventId
+              && new Date(booking.eventId.startsAt) <= new Date())
+            .map((booking) => booking.eventId._id);
+          setEligibleEventIds([...new Set(eligibleIds)]);
+        } catch {
+          setEligibleEventIds([]);
+        }
+      }
     } catch {
       setEvents([]);
     } finally {
@@ -41,6 +61,28 @@ const BrowseEvents = () => {
       setMsg({ id: eventId, type: 'error', text: err.response?.data?.message || 'Could not book. Please try again.' });
     } finally {
       setBusy('');
+    }
+  };
+
+  const submitReview = async (eventId) => {
+    setReviewMsg({ id: '', type: '', text: '' });
+    setReviewBusy(eventId);
+    try {
+      await axiosInstance.post(
+        `/api/events/${eventId}/reviews`,
+        { rating: Number(reviewRatings[eventId] || 5), comment: reviewComments[eventId] || '' },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      setReviewMsg({ id: eventId, type: 'success', text: 'Your review was submitted.' });
+      await load();
+    } catch (err) {
+      setReviewMsg({
+        id: eventId,
+        type: 'error',
+        text: err.response?.data?.message || 'Could not submit your review. Please try again.',
+      });
+    } finally {
+      setReviewBusy('');
     }
   };
 
@@ -88,6 +130,10 @@ const BrowseEvents = () => {
           {sortedEvents.map((ev) => {
             const remaining = ev.capacity - ev.bookedSeats;
             const soldOut = remaining <= 0;
+            const userId = user.id || user._id;
+            const hasReviewed = ev.reviews?.some((review) =>
+              String(review.reviewerId?._id || review.reviewerId) === String(userId)
+            );
             return (
               <div key={ev._id} className="bg-white p-4 rounded shadow">
                 <div className="flex justify-between items-start">
@@ -110,6 +156,74 @@ const BrowseEvents = () => {
                     )}
                   </div>
                 </div>
+
+                {ev.reviews?.length > 0 && (
+                  <section className="mt-4 pt-4 border-t" aria-label={`Reviews for ${ev.title}`}>
+                    <h3 className="text-sm font-semibold mb-3">Customer reviews ({ev.reviews.length})</h3>
+                    <div className="space-y-3">
+                      {ev.reviews.map((review) => (
+                        <article key={review._id} className="text-sm">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-amber-600" aria-label={`${review.rating} out of 5 stars`}>
+                              {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                            </span>
+                            <span className="font-medium">{review.reviewerId?.name || 'Customer'}</span>
+                            <time className="text-gray-500" dateTime={review.createdAt}>
+                              {new Date(review.createdAt).toLocaleDateString('en-AU', { dateStyle: 'medium' })}
+                            </time>
+                          </div>
+                          {review.comment && <p className="text-gray-700 mt-1">{review.comment}</p>}
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {user.role === 'customer' && eligibleEventIds.includes(ev._id) && (
+                  hasReviewed ? (
+                    <p className="mt-4 pt-4 border-t text-sm text-green-700">You reviewed this event.</p>
+                  ) : (
+                    <div className="mt-4 pt-4 border-t">
+                      <h3 className="text-sm font-semibold mb-2">Leave a review</h3>
+                      <div className="flex flex-wrap items-end gap-3">
+                        <label className="text-sm">
+                          <span className="block mb-1">Rating</span>
+                          <select
+                            value={reviewRatings[ev._id] || 5}
+                            onChange={(e) => setReviewRatings({ ...reviewRatings, [ev._id]: e.target.value })}
+                            className="border rounded px-3 py-2"
+                          >
+                            {[5, 4, 3, 2, 1].map((rating) => (
+                              <option key={rating} value={rating}>{rating} star{rating === 1 ? '' : 's'}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-sm flex-1 min-w-48">
+                          <span className="block mb-1">Comment (optional)</span>
+                          <textarea
+                            maxLength={500}
+                            rows={2}
+                            value={reviewComments[ev._id] || ''}
+                            onChange={(e) => setReviewComments({ ...reviewComments, [ev._id]: e.target.value })}
+                            className="w-full border rounded px-3 py-2"
+                          />
+                        </label>
+                        <button
+                          onClick={() => submitReview(ev._id)}
+                          disabled={reviewBusy === ev._id}
+                          className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+                        >
+                          {reviewBusy === ev._id ? 'Submitting…' : 'Submit review'}
+                        </button>
+                      </div>
+                      {reviewMsg.id === ev._id && (
+                        <p className={`mt-2 text-sm ${reviewMsg.type === 'success' ? 'text-green-700' : 'text-red-600'}`}>
+                          {reviewMsg.text}
+                        </p>
+                      )}
+                    </div>
+                  )
+                )}
 
                 {user.role === 'customer' && !soldOut && (
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t">
