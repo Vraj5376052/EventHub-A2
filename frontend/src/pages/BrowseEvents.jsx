@@ -9,19 +9,31 @@ const BrowseEvents = () => {
   const [qty, setQty] = useState({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState({ id: '', type: '', text: '' });
+  const [keyword, setKeyword] = useState('');
+  const [category, setCategory] = useState('');
+  const [sortOrder, setSortOrder] = useState('date');
+ const load = useCallback(async () => {
+  try {
+    setLoading(true);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await axiosInstance.get('/api/events', {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setEvents(res.data);
-    } catch {
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+    const res = await axiosInstance.get('/api/events', {
+      params: {
+        keyword: keyword || undefined,
+        category: category || undefined,
+        sort: sortOrder,
+      },
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    });
+
+    setEvents(res.data);
+  } catch {
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+}, [user, keyword, category, sortOrder]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
 
@@ -48,7 +60,36 @@ const BrowseEvents = () => {
 
   return (
     <div className="max-w-3xl mx-auto mt-10 px-4">
-      <h1 className="text-2xl font-bold mb-6">Browse Events</h1>
+      <h1 className="text-2xl font-bold mb-4">Browse Events</h1>
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+  <input
+    type="text"
+    value={keyword}
+    onChange={(e) => setKeyword(e.target.value)}
+    placeholder="Search title or venue"
+    className="border rounded px-3 py-2"
+  />
+
+  <input
+    type="text"
+    value={category}
+    onChange={(e) => setCategory(e.target.value)}
+    placeholder="Category"
+    className="border rounded px-3 py-2"
+  />
+
+  <select
+    id="event-sort"
+    value={sortOrder}
+    onChange={(e) => setSortOrder(e.target.value)}
+    className="border rounded px-3 py-2"
+  >
+    <option value="date">Date</option>
+    <option value="price">Price</option>
+    <option value="seatsRemaining">Seats remaining</option>
+  </select>
+</div>
 
       {events.length === 0 ? (
         <div className="bg-white p-8 rounded shadow text-center text-gray-500">
@@ -65,6 +106,9 @@ const BrowseEvents = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-lg font-semibold">{ev.title}</h2>
+                    {ev.category && (
+  <p className="text-gray-500 text-xs capitalize">{ev.category}</p>
+)}
                     <p className="text-gray-600 text-sm">{ev.venue}</p>
                     <p className="text-gray-600 text-sm">
                       {new Date(ev.startsAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
