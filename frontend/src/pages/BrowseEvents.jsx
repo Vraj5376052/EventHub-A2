@@ -143,6 +143,11 @@ const BrowseEvents = () => {
                     <p className="text-gray-600 text-sm">
                       {new Date(ev.startsAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
                     </p>
+                    <p className="text-gray-600 text-sm" aria-label={`Average rating for ${ev.title}`}>
+                      {ev.averageRating === null || ev.averageRating === undefined
+                        ? 'No ratings yet'
+                        : `Average rating: ${Number(ev.averageRating).toFixed(1)}`}
+                    </p>
                     {ev.description && <p className="text-gray-700 text-sm mt-2">{ev.description}</p>}
                   </div>
                   <div className="text-right shrink-0 ml-4">

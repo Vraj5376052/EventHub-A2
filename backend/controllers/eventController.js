@@ -68,6 +68,7 @@ const getPublishedEvents = async (req, res) => {
             .populate('customerId', 'name')
             .sort({ createdAt: -1 });
         const reviewsByEvent = new Map();
+        const ratingTotalsByEvent = new Map();
         for (const review of reviews) {
             const eventId = review.eventId.toString();
             const reviewData = review.toObject();
@@ -75,11 +76,22 @@ const getPublishedEvents = async (req, res) => {
                 ...(reviewsByEvent.get(eventId) || []),
                 { ...reviewData, reviewerId: reviewData.customerId },
             ]);
+
+            const ratingTotals = ratingTotalsByEvent.get(eventId) || { total: 0, count: 0 };
+            ratingTotals.total += review.rating;
+            ratingTotals.count += 1;
+            ratingTotalsByEvent.set(eventId, ratingTotals);
         }
 
         res.json(events.map((event) => ({
             ...event.toObject(),
             reviews: reviewsByEvent.get(event._id.toString()) || [],
+            averageRating: ratingTotalsByEvent.has(event._id.toString())
+                ? Math.round(
+                    (ratingTotalsByEvent.get(event._id.toString()).total
+                        / ratingTotalsByEvent.get(event._id.toString()).count) * 10
+                ) / 10
+                : null,
         })));
     } catch (error) {
         res.status(500).json({ message: error.message });
