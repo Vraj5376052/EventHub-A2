@@ -52,6 +52,15 @@ JWT_SECRET=any-long-random-string
 PORT=5001
 ```
 
+When upgrading a database that already contains reviews, stop the backend and run this once before starting the new version:
+
+```bash
+cd backend
+npm run migrate:review-customer-id
+```
+
+This moves existing review ownership from `reviewerId` to `customerId` and replaces the old unique index. The command is safe to rerun.
+
 Then:
 
 ```bash

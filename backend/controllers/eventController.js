@@ -65,12 +65,16 @@ const getPublishedEvents = async (req, res) => {
         const events = await Event.find({ status: 'published' })
             .sort({ startsAt: 1 });
         const reviews = await Review.find({ eventId: { $in: events.map((event) => event._id) } })
-            .populate('reviewerId', 'name')
+            .populate('customerId', 'name')
             .sort({ createdAt: -1 });
         const reviewsByEvent = new Map();
         for (const review of reviews) {
             const eventId = review.eventId.toString();
-            reviewsByEvent.set(eventId, [...(reviewsByEvent.get(eventId) || []), review]);
+            const reviewData = review.toObject();
+            reviewsByEvent.set(eventId, [
+                ...(reviewsByEvent.get(eventId) || []),
+                { ...reviewData, reviewerId: reviewData.customerId },
+            ]);
         }
 
         res.json(events.map((event) => ({
