@@ -71,43 +71,45 @@ const NotificationBell = () => {
   if (!user) return null;
 
   return (
-    <div className="relative mr-4" ref={panelRef}>
+    <div className="relative" ref={panelRef}>
       <button
         onClick={() => (open ? setOpen(false) : openPanel())}
-        className="relative px-2 py-1 hover:bg-blue-700 rounded"
+        className="relative rounded-md px-3 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition"
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
       >
-        <span className="text-xl" aria-hidden="true">&#128276;</span>
+        <span className="text-lg" aria-hidden="true">&#128276;</span>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[1.25rem]">
+          <span className="absolute top-0 right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[1.1rem] text-center">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded shadow-lg border z-50 max-h-96 overflow-y-auto">
-          <div className="px-4 py-2 border-b font-semibold text-sm">Notifications</div>
+        <div className="absolute right-0 mt-2 w-80 card shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-sm text-slate-900">
+            Notifications
+          </div>
 
-          {loading && <p className="px-4 py-6 text-sm text-gray-500">Loading…</p>}
+          {loading && <p className="px-4 py-6 muted">Loading</p>}
 
           {/* An empty list is a normal state, so it reads as a message and not
               as something having gone wrong. */}
           {!loading && notifications.length === 0 && (
-            <p className="px-4 py-6 text-sm text-gray-500">No notifications yet.</p>
+            <p className="px-4 py-6 muted">No notifications yet.</p>
           )}
 
           {!loading && notifications.map((item) => (
             <div
               key={item._id}
-              className={`px-4 py-3 border-b last:border-b-0 text-sm ${
-                item.read ? 'bg-white' : 'bg-blue-50 border-l-4 border-l-blue-600'
+              className={`px-4 py-3 border-b border-slate-100 last:border-b-0 text-sm ${
+                item.read ? 'bg-white' : 'bg-indigo-50 border-l-4 border-l-indigo-600'
               }`}
             >
-              <p className={item.read ? 'text-gray-700' : 'text-gray-900 font-medium'}>
+              <p className={item.read ? 'text-slate-600' : 'text-slate-900 font-medium'}>
                 {item.message}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-slate-400 mt-1">
                 {new Date(item.createdAt).toLocaleString()}
               </p>
             </div>
