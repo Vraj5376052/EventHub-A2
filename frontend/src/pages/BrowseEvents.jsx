@@ -9,7 +9,9 @@ const BrowseEvents = () => {
   const [qty, setQty] = useState({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState({ id: '', type: '', text: '' });
-  const [sortOrder, setSortOrder] = useState('soonest');
+  const [keyword, setKeyword] = useState('');
+  const [category, setCategory] = useState('');
+  const [sortOrder, setSortOrder] = useState('date');
   const [eligibleEventIds, setEligibleEventIds] = useState([]);
   const [reviewRatings, setReviewRatings] = useState({});
   const [reviewComments, setReviewComments] = useState({});
@@ -18,10 +20,19 @@ const BrowseEvents = () => {
 
   const load = useCallback(async () => {
     try {
+      setLoading(true);
+
       const res = await axiosInstance.get('/api/events', {
+        params: {
+          keyword: keyword || undefined,
+          category: category || undefined,
+          sort: sortOrder,
+        },
         headers: { Authorization: `Bearer ${user.token}` },
       });
+
       setEvents(res.data);
+
       if (user.role === 'customer') {
         try {
           const bookingsRes = await axiosInstance.get('/api/bookings/mine', {
@@ -42,7 +53,7 @@ const BrowseEvents = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, keyword, category, sortOrder]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
 
@@ -87,37 +98,39 @@ const BrowseEvents = () => {
   };
 
   if (!user) return <p className="text-center mt-20">Please log in.</p>;
-
-  const sortedEvents = [...events].sort((a, b) => {
-  const firstDate = new Date(a.startsAt);
-  const secondDate = new Date(b.startsAt);
-
-  return sortOrder === 'latest'
-    ? secondDate - firstDate
-    : firstDate - secondDate;
-});
   if (loading) return <p className="text-center mt-20">Loading events…</p>;
 
   return (
     <div className="max-w-3xl mx-auto mt-10 px-4">
-     <div className="flex justify-between items-center mb-6">
-  <h1 className="text-2xl font-bold">Browse Events</h1>
+      <h1 className="text-2xl font-bold mb-4">Browse Events</h1>
 
-  <div className="flex items-center gap-2">
-    <label htmlFor="event-sort" className="text-sm font-medium">
-      Sort by
-    </label>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+  <input
+    type="text"
+    value={keyword}
+    onChange={(e) => setKeyword(e.target.value)}
+    placeholder="Search title or venue"
+    className="border rounded px-3 py-2"
+  />
 
-    <select
-      id="event-sort"
-      value={sortOrder}
-      onChange={(e) => setSortOrder(e.target.value)}
-      className="border rounded px-3 py-2"
-    >
-      <option value="soonest">Soonest first</option>
-      <option value="latest">Latest first</option>
-    </select>
-  </div>
+  <input
+    type="text"
+    value={category}
+    onChange={(e) => setCategory(e.target.value)}
+    placeholder="Category"
+    className="border rounded px-3 py-2"
+  />
+
+  <select
+    id="event-sort"
+    value={sortOrder}
+    onChange={(e) => setSortOrder(e.target.value)}
+    className="border rounded px-3 py-2"
+  >
+    <option value="date">Date</option>
+    <option value="price">Price</option>
+    <option value="seatsRemaining">Seats remaining</option>
+  </select>
 </div>
 
       {events.length === 0 ? (
@@ -127,7 +140,7 @@ const BrowseEvents = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {sortedEvents.map((ev) => {
+          {events.map((ev) => {
             const remaining = ev.capacity - ev.bookedSeats;
             const soldOut = remaining <= 0;
             const userId = user.id || user._id;
@@ -139,6 +152,9 @@ const BrowseEvents = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="text-lg font-semibold">{ev.title}</h2>
+                    {ev.category && (
+  <p className="text-gray-500 text-xs capitalize">{ev.category}</p>
+)}
                     <p className="text-gray-600 text-sm">{ev.venue}</p>
                     <p className="text-gray-600 text-sm">
                       {new Date(ev.startsAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}

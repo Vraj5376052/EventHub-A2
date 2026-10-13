@@ -1,9 +1,10 @@
 const Event = require('../models/Event');
 const Review = require('../models/Review');
 const auditLogger = require('../patterns/AuditLogger');
+const EventSearchFacade = require('../patterns/EventSearchFacade');
 
 const createEvent = async (req, res) => {
-    const { title, description, venue, startsAt, capacity, price } = req.body;
+    const { title, description, category, venue, startsAt, capacity, price } = req.body;
     try {
         if (!title || title.trim().length < 3 || title.trim().length > 100) {
             return res.status(400).json({ field: 'title', message: 'Title must be between 3 and 100 characters' });
@@ -29,6 +30,9 @@ const createEvent = async (req, res) => {
             organiserId: req.user.id,
             title: title.trim(),
             description: (description || '').trim(),
+            category: typeof category === 'string' && category.trim()
+                ? category.trim().toLowerCase()
+                : 'general',
             venue: venue.trim(),
             startsAt: start,
             capacity: Number(capacity),
@@ -62,19 +66,25 @@ const getMyEvents = async (req, res) => {
 
 const getPublishedEvents = async (req, res) => {
     try {
-        const events = await Event.find({ status: 'published' })
-            .sort({ startsAt: 1 });
-        const reviews = await Review.find({ eventId: { $in: events.map((event) => event._id) } })
+        const events = await EventSearchFacade.searchEvents(req.query);
+
+        const reviews = await Review.find({
+            eventId: { $in: events.map((event) => event._id) },
+        })
             .populate('customerId', 'name')
             .sort({ createdAt: -1 });
+
         const reviewsByEvent = new Map();
         const ratingTotalsByEvent = new Map();
         for (const review of reviews) {
             const eventId = review.eventId.toString();
-            const reviewData = review.toObject();
+            // The model stores customerId; the API has always returned
+            // reviewerId, so the field is renamed on the way out rather than
+            // sent twice under both names.
+            const { customerId, ...reviewData } = review.toObject();
             reviewsByEvent.set(eventId, [
                 ...(reviewsByEvent.get(eventId) || []),
-                { ...reviewData, reviewerId: reviewData.customerId },
+                { ...reviewData, reviewerId: customerId },
             ]);
 
             const ratingTotals = ratingTotalsByEvent.get(eventId) || { total: 0, count: 0 };
@@ -83,18 +93,23 @@ const getPublishedEvents = async (req, res) => {
             ratingTotalsByEvent.set(eventId, ratingTotals);
         }
 
-        res.json(events.map((event) => ({
-            ...event.toObject(),
-            reviews: reviewsByEvent.get(event._id.toString()) || [],
-            averageRating: ratingTotalsByEvent.has(event._id.toString())
-                ? Math.round(
-                    (ratingTotalsByEvent.get(event._id.toString()).total
-                        / ratingTotalsByEvent.get(event._id.toString()).count) * 10
-                ) / 10
-                : null,
-        })));
+        // The facade returns plain aggregation results, so the event is spread directly rather than through toObject().
+        return res.json(
+            events.map((event) => {
+                const ratingTotals = ratingTotalsByEvent.get(event._id.toString());
+                return {
+                    ...event,
+                    reviews: reviewsByEvent.get(event._id.toString()) || [],
+                    averageRating: ratingTotals
+                        ? Math.round((ratingTotals.total / ratingTotals.count) * 10) / 10
+                        : null,
+                };
+            })
+        );
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res
+            .status(error.statusCode || 500)
+            .json({ message: error.message });
     }
 };
 
