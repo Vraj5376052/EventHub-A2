@@ -75,6 +75,7 @@ const getPublishedEvents = async (req, res) => {
             .sort({ createdAt: -1 });
 
         const reviewsByEvent = new Map();
+        const ratingTotalsByEvent = new Map();
         for (const review of reviews) {
             const eventId = review.eventId.toString();
             // The model stores customerId; the API has always returned
@@ -85,15 +86,25 @@ const getPublishedEvents = async (req, res) => {
                 ...(reviewsByEvent.get(eventId) || []),
                 { ...reviewData, reviewerId: customerId },
             ]);
+
+            const ratingTotals = ratingTotalsByEvent.get(eventId) || { total: 0, count: 0 };
+            ratingTotals.total += review.rating;
+            ratingTotals.count += 1;
+            ratingTotalsByEvent.set(eventId, ratingTotals);
         }
 
-        // The facade returns plain aggregation results, so the event is spread
-        // directly rather than through toObject().
+        // The facade returns plain aggregation results, so the event is spread directly rather than through toObject().
         return res.json(
-            events.map((event) => ({
-                ...event,
-                reviews: reviewsByEvent.get(event._id.toString()) || [],
-            }))
+            events.map((event) => {
+                const ratingTotals = ratingTotalsByEvent.get(event._id.toString());
+                return {
+                    ...event,
+                    reviews: reviewsByEvent.get(event._id.toString()) || [],
+                    averageRating: ratingTotals
+                        ? Math.round((ratingTotals.total / ratingTotals.count) * 10) / 10
+                        : null,
+                };
+            })
         );
     } catch (error) {
         return res

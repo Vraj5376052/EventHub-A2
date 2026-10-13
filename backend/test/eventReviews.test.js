@@ -159,7 +159,50 @@ describe('event review listing', () => {
         expect(publishedEvent.title).to.equal('Live music');
         expect(publishedEvent.reviews[0].reviewerId.name).to.equal('Ari Customer');
         expect(publishedEvent.reviews[0].createdAt).to.equal(reviewDate);
+        expect(publishedEvent.averageRating).to.equal(5);
         expect(reviewQuery.populate.calledWith('customerId', 'name')).to.equal(true);
+    });
+
+    it('recalculates one-decimal averages and leaves unrated events without a zero rating', async () => {
+        const events = [
+            { _id: 'e1', title: 'Rated event' },
+            { _id: 'e2', title: 'Unrated event' },
+        ];
+        const reviews = [5, 4].map((rating) => ({
+            eventId: 'e1',
+            customerId: { name: 'Customer' },
+            rating,
+            toObject: () => ({
+                eventId: 'e1',
+                customerId: { name: 'Customer' },
+                rating,
+            }),
+        }));
+        sinon.stub(EventSearchFacade, 'searchEvents').resolves(events);;
+        let currentReviews = reviews;
+        const reviewQuery = {
+            populate: sinon.stub().returnsThis(),
+            sort: sinon.stub().callsFake(() => Promise.resolve(currentReviews)),
+        };
+        sinon.stub(Review, 'find').returns(reviewQuery);
+        const res = mockRes();
+
+        await getPublishedEvents({}, res);
+        expect(res.json.firstCall.args[0].map((event) => event.averageRating)).to.deep.equal([4.5, null]);
+
+        currentReviews = [...reviews, {
+            eventId: 'e1',
+            customerId: { name: 'Another customer' },
+            rating: 5,
+            toObject: () => ({
+                eventId: 'e1',
+                customerId: { name: 'Another customer' },
+                rating: 5,
+            }),
+        }];
+        await getPublishedEvents({}, res);
+
+        expect(res.json.secondCall.args[0].map((event) => event.averageRating)).to.deep.equal([4.7, null]);
     });
 });
 
