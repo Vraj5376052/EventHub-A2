@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "mocha",
+    "test:report": "mocha --reporter mochawesome",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "prod": "node server.js",
@@ -24,6 +25,7 @@
     "chai": "^6.3.0",
     "esm": "^3.2.25",
     "mocha": "^11.8.0",
+    "mochawesome": "^8.1.1",
     "nodemon": "^2.0.15",
     "sinon": "^19.0.5"
   },
