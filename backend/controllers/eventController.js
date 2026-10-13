@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const Review = require('../models/Review');
 const auditLogger = require('../patterns/AuditLogger');
 const EventSearchFacade = require('../patterns/EventSearchFacade');
 const createEvent = async (req, res) => {
@@ -64,14 +65,31 @@ const getMyEvents = async (req, res) => {
 };
 
 const getPublishedEvents = async (req, res) => {
-  try {
-    const events = await EventSearchFacade.searchEvents(req.query);
-    return res.json(events);
-  } catch (error) {
-    return res
-      .status(error.statusCode || 500)
-      .json({ message: error.message });
-  }
-};
+    try {
+        const events = await EventSearchFacade.searchEvents(req.query);
 
+        const reviews = await Review.find({
+            eventId: { $in: events.map((event) => event._id) },
+        })
+            .populate('reviewerId', 'name')
+            .sort({ createdAt: -1 });
+
+        const reviewsByEvent = new Map();
+        for (const review of reviews) {
+            const eventId = review.eventId.toString();
+            reviewsByEvent.set(eventId, [...(reviewsByEvent.get(eventId) || []), review]);
+        }
+
+        return res.json(
+            events.map((event) => ({
+                ...event,
+                reviews: reviewsByEvent.get(event._id.toString()) || [],
+            }))
+        );
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json({ message: error.message });
+    }
+};
 module.exports = { createEvent, getMyEvents, getPublishedEvents };
