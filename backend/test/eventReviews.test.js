@@ -3,6 +3,7 @@ const sinon = require('sinon');
 const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const Review = require('../models/Review');
+const EventSearchFacade = require('../patterns/EventSearchFacade');
 const { getPublishedEvents } = require('../controllers/eventController');
 const { addReview } = require('../controllers/reviewController');
 
@@ -68,7 +69,9 @@ describe('event review listing', () => {
     afterEach(() => sinon.restore());
 
     it('includes populated reviewer names and review dates on published events', async () => {
-        const event = { _id: 'e1', toObject: () => ({ _id: 'e1', title: 'Live music' }) };
+        // The facade returns plain aggregation results, not Mongoose documents,
+        // so the controller spreads the object directly.
+        const event = { _id: 'e1', title: 'Live music' };
         const reviewDate = new Date('2026-10-01T12:00:00Z');
         const review = {
             eventId: 'e1',
@@ -77,7 +80,7 @@ describe('event review listing', () => {
             comment: 'Excellent',
             createdAt: reviewDate,
         };
-        sinon.stub(Event, 'find').returns({ sort: sinon.stub().resolves([event]) });
+        const search = sinon.stub(EventSearchFacade, 'searchEvents').resolves([event]);
         const reviewQuery = {
             populate: sinon.stub().returnsThis(),
             sort: sinon.stub().resolves([review]),
@@ -85,9 +88,11 @@ describe('event review listing', () => {
         sinon.stub(Review, 'find').returns(reviewQuery);
         const res = mockRes();
 
-        await getPublishedEvents({}, res);
+        await getPublishedEvents({ query: { category: 'music' } }, res);
 
         const publishedEvent = res.json.firstCall.args[0][0];
+        expect(search.calledWith({ category: 'music' })).to.equal(true);
+        expect(publishedEvent.title).to.equal('Live music');
         expect(publishedEvent.reviews[0].reviewerId.name).to.equal('Ari Customer');
         expect(publishedEvent.reviews[0].createdAt).to.equal(reviewDate);
         expect(reviewQuery.populate.calledWith('reviewerId', 'name')).to.equal(true);

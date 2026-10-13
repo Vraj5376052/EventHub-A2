@@ -1,9 +1,9 @@
 const Event = require('../models/Event');
 const Review = require('../models/Review');
 const auditLogger = require('../patterns/AuditLogger');
-
+const EventSearchFacade = require('../patterns/EventSearchFacade');
 const createEvent = async (req, res) => {
-    const { title, description, venue, startsAt, capacity, price } = req.body;
+    const { title, description, category, venue, startsAt, capacity, price } = req.body;
     try {
         if (!title || title.trim().length < 3 || title.trim().length > 100) {
             return res.status(400).json({ field: 'title', message: 'Title must be between 3 and 100 characters' });
@@ -27,9 +27,13 @@ const createEvent = async (req, res) => {
 
         const event = await Event.create({
             organiserId: req.user.id,
-            title: title.trim(),
-            description: (description || '').trim(),
-            venue: venue.trim(),
+           title: title.trim(),
+description: (description || '').trim(),
+category:
+  typeof category === 'string' && category.trim()
+    ? category.trim().toLowerCase()
+    : 'general',
+venue: venue.trim(),
             startsAt: start,
             capacity: Number(capacity),
             price: Number(price),
@@ -62,24 +66,30 @@ const getMyEvents = async (req, res) => {
 
 const getPublishedEvents = async (req, res) => {
     try {
-        const events = await Event.find({ status: 'published' })
-            .sort({ startsAt: 1 });
-        const reviews = await Review.find({ eventId: { $in: events.map((event) => event._id) } })
+        const events = await EventSearchFacade.searchEvents(req.query);
+
+        const reviews = await Review.find({
+            eventId: { $in: events.map((event) => event._id) },
+        })
             .populate('reviewerId', 'name')
             .sort({ createdAt: -1 });
+
         const reviewsByEvent = new Map();
         for (const review of reviews) {
             const eventId = review.eventId.toString();
             reviewsByEvent.set(eventId, [...(reviewsByEvent.get(eventId) || []), review]);
         }
 
-        res.json(events.map((event) => ({
-            ...event.toObject(),
-            reviews: reviewsByEvent.get(event._id.toString()) || [],
-        })));
+        return res.json(
+            events.map((event) => ({
+                ...event,
+                reviews: reviewsByEvent.get(event._id.toString()) || [],
+            }))
+        );
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res
+            .status(error.statusCode || 500)
+            .json({ message: error.message });
     }
 };
-
 module.exports = { createEvent, getMyEvents, getPublishedEvents };
