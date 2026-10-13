@@ -30,56 +30,58 @@ jobs:
         working-directory: backend
         run: npm test
 
+  # The deploy runs on a self-hosted runner installed on each EC2 instance
+  # rather than over SSH from a GitHub-hosted runner. The university firewall
+  # only admits campus addresses, so no GitHub runner can reach port 22; the
+  # self-hosted agent needs outbound traffic only, and no SSH key or host
+  # address has to be stored as a secret at all (NFR-06).
   deploy:
-    name: Deploy to ${{ matrix.label }}
+    name: Deploy on ${{ matrix.label }}
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
 
-    # One job per instance, running in parallel. fail-fast is off on purpose:
-    # a problem on one instance must not cancel the deploy to the other, which
+    # One job per instance, in parallel. fail-fast is off on purpose: a
+    # problem on one instance must not cancel the deploy to the other, which
     # is the same independence NFR-05 asks for at runtime.
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - label: instance-a
-            host_secret: EC2_HOST_A
-          - label: instance-b
-            host_secret: EC2_HOST_B
+        label: [instance-a, instance-b]
+
+    runs-on:
+      - self-hosted
+      - ${{ matrix.label }}
+
+    # The runner deploys into the standing clone, not its own workspace, so
+    # the PM2 processes keep pointing at the same directory across deploys.
+    defaults:
+      run:
+        working-directory: /home/ubuntu/EventHub-A2
 
     steps:
-      - name: Write the deploy key
+      - name: Update the code to main
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy.pem
-          chmod 600 ~/.ssh/deploy.pem
-
-      - name: Trust the host key
-        run: ssh-keyscan -H "${{ secrets[matrix.host_secret] }}" >> ~/.ssh/known_hosts
-
-      - name: Pull, install and reload
-        run: |
-          ssh -i ~/.ssh/deploy.pem \
-              "${{ secrets.EC2_USER }}@${{ secrets[matrix.host_secret] }}" \
-              'bash -se' <<'REMOTE'
-          set -euo pipefail
-          cd ~/EventHub-A2
           git fetch origin main
+          git checkout main
           git reset --hard origin/main
-          cd backend && npm ci --omit=dev
-          cd ../frontend && npm ci
-          cd ..
+
+      - name: Install backend dependencies
+        run: npm ci --omit=dev
+        working-directory: /home/ubuntu/EventHub-A2/backend
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: /home/ubuntu/EventHub-A2/frontend
+
+      - name: Reload PM2
+        run: |
           pm2 startOrReload ecosystem.config.js --update-env
           pm2 save
-          REMOTE
 
       - name: Confirm the instance came back
         run: |
-          ssh -i ~/.ssh/deploy.pem \
-              "${{ secrets.EC2_USER }}@${{ secrets[matrix.host_secret] }}" \
-              'for i in 1 2 3 4 5 6; do curl -fsS --max-time 5 http://localhost:5001/api/health && exit 0; sleep 5; done; exit 1'
-
-      - name: Remove the key
-        if: always()
-        run: rm -f ~/.ssh/deploy.pem
+          for i in 1 2 3 4 5 6; do
+            curl -fsS --max-time 5 http://localhost:5001/api/health && exit 0
+            sleep 5
+          done
+          exit 1
