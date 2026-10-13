@@ -161,4 +161,30 @@ describe('EventSearchFacade', () => {
 
     expect(aggregateStub.called).to.equal(false);
   });
+
+  it('defaults to upcoming events when no timeframe is given', async () => {
+    await EventSearchFacade.searchEvents({
+      sort: 'date',
+    });
+
+    const pipeline = aggregateStub.firstCall.args[0];
+
+    expect(pipeline[0].$match.startsAt.$gte).to.be.a('date');
+  });
+
+  it('returns past events when asked, which is what the review flow needs', async () => {
+    await EventSearchFacade.searchEvents({
+      when: 'past',
+      sort: 'date',
+    });
+
+    const pipeline = aggregateStub.firstCall.args[0];
+
+    expect(pipeline[0].$match.startsAt.$lt).to.be.a('date');
+    expect(pipeline[pipeline.length - 1]).to.deep.equal({
+      $sort: {
+        startsAt: -1,
+      },
+    });
+  });
 });

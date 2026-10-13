@@ -115,4 +115,55 @@ describe('EventQueryBuilder', () => {
       expect(error.statusCode).to.equal(400);
     }
   });
+
+  it('hides past events when asked for upcoming', () => {
+    const pipeline = new EventQueryBuilder()
+      .withTimeframe('upcoming')
+      .build();
+
+    expect(pipeline[0].$match.startsAt.$gte).to.be.a('date');
+    expect(pipeline[0].$match.startsAt.$lt).to.equal(undefined);
+  });
+
+  it('shows only past events when asked for past', () => {
+    const pipeline = new EventQueryBuilder()
+      .withTimeframe('past')
+      .build();
+
+    expect(pipeline[0].$match.startsAt.$lt).to.be.a('date');
+    expect(pipeline[0].$match.startsAt.$gte).to.equal(undefined);
+  });
+
+  it('orders past events newest first and upcoming events soonest first', () => {
+    const past = new EventQueryBuilder()
+      .withTimeframe('past')
+      .sortedBy('date')
+      .build();
+
+    const upcoming = new EventQueryBuilder()
+      .withTimeframe('upcoming')
+      .sortedBy('date')
+      .build();
+
+    expect(past[past.length - 1]).to.deep.equal({ $sort: { startsAt: -1 } });
+    expect(upcoming[upcoming.length - 1]).to.deep.equal({ $sort: { startsAt: 1 } });
+  });
+
+  it('applies no date filter for all, and rejects anything else with 400', () => {
+    const pipeline = new EventQueryBuilder()
+      .withTimeframe('all')
+      .build();
+
+    expect(pipeline[0].$match.startsAt).to.equal(undefined);
+
+    try {
+      new EventQueryBuilder().withTimeframe('yesterday');
+      throw new Error('Expected withTimeframe to throw');
+    } catch (error) {
+      expect(error.message).to.equal(
+        'Invalid timeframe. Use upcoming, past, or all.'
+      );
+      expect(error.statusCode).to.equal(400);
+    }
+  });
 });

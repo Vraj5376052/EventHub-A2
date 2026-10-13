@@ -31,6 +31,7 @@ const BrowseEvents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState('');
   const [sortOrder, setSortOrder] = useState('date');
+  const [when, setWhen] = useState('upcoming');
   const [eligibleEventIds, setEligibleEventIds] = useState([]);
   const [reviewRatings, setReviewRatings] = useState({});
   const [reviewComments, setReviewComments] = useState({});
@@ -54,6 +55,7 @@ const BrowseEvents = () => {
           keyword: searchTerm || undefined,
           category: category || undefined,
           sort: sortOrder,
+          when,
         },
         headers: { Authorization: `Bearer ${user.token}` },
       });
@@ -80,7 +82,7 @@ const BrowseEvents = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, searchTerm, category, sortOrder]);
+  }, [user, searchTerm, category, sortOrder, when]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
 
@@ -157,14 +159,43 @@ const BrowseEvents = () => {
             EventHub
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Find something worth going to
+            {when === 'past'
+              ? 'Events that have already happened'
+              : 'Find something worth going to'}
           </h1>
           <p className="mt-2 max-w-xl text-sm text-indigo-100">
             {loading
               ? 'Loading events'
-              : `${events.length} event${events.length === 1 ? '' : 's'}${filtersApplied ? ' matching your filters' : ' on sale right now'}.`}
+              : when === 'past'
+                ? `${events.length} past event${events.length === 1 ? '' : 's'}${filtersApplied ? ' matching your filters' : ', newest first'}. Leave a review on anything you booked and attended.`
+                : `${events.length} event${events.length === 1 ? '' : 's'}${filtersApplied ? ' matching your filters' : ' on sale right now'}.`}
           </p>
         </div>
+      </div>
+
+      {/* Upcoming by default, because a booking page full of events that have
+          already finished is noise. Past stays reachable because that is the
+          only place a review can be left. */}
+      <div
+        className="animate-up mb-6 flex w-fit gap-1 rounded-xl bg-slate-200/60 p-1"
+        style={{ '--d': '40ms' }}
+      >
+        {[
+          { value: 'upcoming', label: 'Upcoming' },
+          { value: 'past', label: 'Past events' },
+        ].map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setWhen(option.value)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
+              when === option.value
+                ? 'bg-white text-indigo-700 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
       <div className="card animate-up p-5 mb-8" style={{ '--d': '80ms' }}>
@@ -231,12 +262,18 @@ const BrowseEvents = () => {
       ) : events.length === 0 ? (
         <div className="empty-state">
           <p className="mb-1 text-base font-semibold text-slate-700">
-            {filtersApplied ? 'No events match your filters.' : 'No events available yet.'}
+            {filtersApplied
+              ? 'No events match your filters.'
+              : when === 'past'
+                ? 'Nothing has finished yet.'
+                : 'No upcoming events.'}
           </p>
           <p className="muted">
             {filtersApplied
               ? 'Try a different keyword, or clear the filters.'
-              : 'Check back soon, organisers are still adding events.'}
+              : when === 'past'
+                ? 'Events move here once their start time has passed.'
+                : 'Check back soon, organisers are still adding events. Anything that has already finished is under Past events.'}
           </p>
         </div>
       ) : (
