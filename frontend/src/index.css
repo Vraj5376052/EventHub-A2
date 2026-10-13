@@ -1,3 +1,381 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ----------------------------------------------------------------
+   Motion. Keyframes live outside @layer so they are never purged.
+   ---------------------------------------------------------------- */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(2%, -3%) scale(1.08); }
+}
+@keyframes sheen {
+  0%   { left: -60%; }
+  100% { left: 140%; }
+}
+@keyframes ring-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-700 antialiased;
+  }
+
+  /* A soft gradient mesh behind everything. Oversized and transform
+     animated, so it drifts without ever showing an edge and without
+     repainting layout. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: -25%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(38rem 38rem at 18% 6%, rgba(99, 102, 241, 0.18), transparent 62%),
+      radial-gradient(32rem 32rem at 86% 10%, rgba(168, 85, 247, 0.15), transparent 62%),
+      radial-gradient(36rem 36rem at 64% 92%, rgba(56, 189, 248, 0.12), transparent 62%);
+    animation: drift 26s ease-in-out infinite;
+  }
+
+  h1 {
+    @apply text-3xl font-bold tracking-tight text-slate-900;
+  }
+
+  h2 {
+    @apply text-lg font-semibold tracking-tight text-slate-900;
+  }
+
+  ::selection {
+    @apply bg-indigo-200 text-indigo-950;
+  }
+
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-[3px] border-solid border-transparent bg-slate-300;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+    background-clip: content-box;
+  }
+}
+
+/* ----------------------------------------------------------------
+   One shared vocabulary so the eight pages do not drift apart.
+   Plain Tailwind and plain CSS, no plugin and no component library.
+   ---------------------------------------------------------------- */
+@layer components {
+  .page {
+    @apply max-w-5xl mx-auto px-4 py-10;
+  }
+
+  .page-narrow {
+    @apply max-w-md mx-auto px-4 py-16;
+  }
+
+  .page-header {
+    @apply flex flex-wrap items-end justify-between gap-4 mb-8;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(100deg, #4338ca, #7c3aed 42%, #0284c7);
+  }
+
+  /* ---- surfaces ---- */
+  .card {
+    @apply rounded-2xl border border-white/80 bg-white/80 backdrop-blur-sm;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 10px 28px -14px rgba(15, 23, 42, 0.14);
+  }
+
+  .card-pad {
+    @apply card p-7;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-1 border-indigo-200/90;
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.05),
+      0 22px 44px -18px rgba(79, 70, 229, 0.3);
+  }
+
+  .hero {
+    @apply relative overflow-hidden rounded-3xl px-7 py-9 text-white;
+    background-image: linear-gradient(125deg, #312e81, #4f46e5 45%, #7c3aed);
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(22rem 22rem at 88% -20%, rgba(255, 255, 255, 0.22), transparent 60%),
+      radial-gradient(18rem 18rem at 8% 120%, rgba(14, 165, 233, 0.35), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ---- buttons ---- */
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden
+           rounded-xl px-5 py-2.5 text-sm font-semibold
+           transition-all duration-200 ease-out
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn text-white focus-visible:ring-indigo-500;
+    background-image: linear-gradient(135deg, #4f46e5, #7c3aed);
+    box-shadow: 0 8px 20px -8px rgba(79, 70, 229, 0.6);
+  }
+
+  .btn-primary:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 14px 28px -10px rgba(79, 70, 229, 0.7);
+  }
+
+  .btn-primary:active {
+    @apply translate-y-0;
+  }
+
+  /* A light sweeping across the button on hover. */
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 45%;
+    height: 100%;
+    transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  }
+
+  .btn-primary:hover::after {
+    animation: sheen 0.75s ease-out;
+  }
+
+  .btn-secondary {
+    @apply btn border border-slate-200 bg-white/90 text-slate-700
+           hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white
+           focus-visible:ring-slate-400;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  }
+
+  .btn-danger {
+    @apply btn border border-red-200 bg-white/90 text-red-600
+           hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-50
+           focus-visible:ring-red-400;
+  }
+
+  .btn-sm {
+    @apply px-3.5 py-1.5 text-xs;
+  }
+
+  /* ---- navigation ---- */
+  .nav-link {
+    @apply relative rounded-lg px-3 py-2 text-sm font-medium text-slate-600
+           transition-colors hover:text-indigo-700;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.25rem;
+    height: 2px;
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease-out;
+    background-image: linear-gradient(90deg, #4f46e5, #7c3aed);
+  }
+
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .nav-link-active {
+    @apply nav-link text-indigo-700;
+  }
+
+  .nav-link-active::after {
+    transform: scaleX(1);
+  }
+
+  /* ---- forms ---- */
+  .label {
+    @apply block text-sm font-medium text-slate-700 mb-1.5;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5
+           text-sm text-slate-900 transition-all duration-200
+           placeholder:text-slate-400
+           focus:border-indigo-400 focus:bg-white focus:outline-none;
+  }
+
+  .input:focus {
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  }
+
+  .input-error {
+    @apply border-red-300 focus:border-red-400;
+  }
+
+  .input-error:focus {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.14);
+  }
+
+  /* ---- badges ---- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1
+           text-xs font-semibold;
+    animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .badge-neutral {
+    @apply badge bg-slate-100 text-slate-600;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-100 text-emerald-700;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  /* ---- feedback ---- */
+  .alert {
+    @apply rounded-xl px-3.5 py-2.5 text-sm;
+    animation: slide-down 0.25s ease-out both;
+  }
+
+  .alert-success {
+    @apply alert border border-emerald-200 bg-emerald-50 text-emerald-800;
+  }
+
+  .alert-error {
+    @apply alert border border-red-200 bg-red-50 text-red-700;
+  }
+
+  .alert-warning {
+    @apply alert border border-amber-200 bg-amber-50 text-amber-900;
+  }
+
+  .muted {
+    @apply text-sm text-slate-500;
+  }
+
+  .empty-state {
+    @apply rounded-2xl border border-dashed border-slate-300 bg-white/60
+           px-6 py-16 text-center backdrop-blur-sm;
+    animation: fade-up 0.5s cubic-bezier(0.21, 1, 0.21, 1) both;
+  }
+
+  /* ---- loading ---- */
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-slate-200/70;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.75),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+
+  /* ---- motion utilities ---- */
+  .animate-up {
+    animation: fade-up 0.55s cubic-bezier(0.21, 1, 0.21, 1) both;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .animate-fade {
+    animation: fade-in 0.4s ease both;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .animate-panel {
+    animation: slide-down 0.22s ease-out both;
+  }
+
+  .animate-ring {
+    animation: ring-pulse 2s ease-out infinite;
+  }
+
+  .bar-fill {
+    transform-origin: left;
+    animation: grow-x 0.9s cubic-bezier(0.21, 1, 0.21, 1) both;
+    animation-delay: 0.15s;
+  }
+}
+
+/* Anyone who has asked their OS to calm animations down gets a still page. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

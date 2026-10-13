@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 
+const formatDateTime = (value) => new Date(value).toLocaleString('en-AU', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
 const MyBookings = () => {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -52,63 +57,90 @@ const MyBookings = () => {
     }
   };
 
-  if (!user) return <p className="text-center mt-20">Please log in.</p>;
-  if (loading) return <p className="text-center mt-20">Loading your bookings…</p>;
+  if (!user) {
+    return (
+      <div className="page-narrow">
+        <div className="empty-state">
+          <p className="font-medium text-slate-700">Please log in to see your bookings.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const active = bookings.filter((b) => b.status !== 'cancelled').length;
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 px-4">
-      <h1 className="text-2xl font-bold mb-6">My Bookings</h1>
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <h1>My bookings</h1>
+          <p className="muted mt-1">
+            {loading
+              ? 'Loading your bookings'
+              : `${bookings.length} booking${bookings.length === 1 ? '' : 's'}, ${active} active`}
+          </p>
+        </div>
+      </div>
 
-      {bookings.length === 0 ? (
-        <div className="bg-white p-8 rounded shadow text-center text-gray-500">
-          <p className="mb-2">You have no bookings yet.</p>
-          <p className="text-sm">Anything you book will show up here.</p>
+      {loading ? (
+        <div className="space-y-4">
+          {[0, 1].map((row) => (
+            <div key={row} className="card p-5">
+              <div className="skeleton h-5 w-1/3 mb-3" />
+              <div className="skeleton h-4 w-1/4 mb-2" />
+              <div className="skeleton h-4 w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : bookings.length === 0 ? (
+        <div className="empty-state">
+          <p className="font-medium text-slate-700 mb-1">You have no bookings yet.</p>
+          <p className="muted">Anything you book will show up here.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {bookings.map((b) => {
             const ev = b.eventId;
             const cancelled = b.status === 'cancelled';
+
             return (
-              <div key={b._id} className={`bg-white p-4 rounded shadow ${cancelled ? 'opacity-60' : ''}`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-lg font-semibold">{ev?.title || 'Event unavailable'}</h2>
-                    {ev && <p className="text-gray-600 text-sm">{ev.venue}</p>}
-                    {ev && (
-                      <p className="text-gray-600 text-sm">
-                        {new Date(ev.startsAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
-                      </p>
-                    )}
-                    <p className="text-gray-500 text-xs mt-2">Reference {b.reference}</p>
+              <article key={b._id} className={`card p-5 ${cancelled ? 'opacity-70' : ''}`}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h2>{ev?.title || 'Event unavailable'}</h2>
+                    {ev && <p className="muted">{ev.venue}</p>}
+                    {ev && <p className="muted">{formatDateTime(ev.startsAt)}</p>}
+                    <p className="text-xs text-slate-400 mt-2 font-mono">{b.reference}</p>
                   </div>
-                  <div className="text-right shrink-0 ml-4">
-                    <p className="font-semibold">{b.quantity} ticket{b.quantity === 1 ? '' : 's'}</p>
-                    {ev && <p className="text-sm text-gray-600">${(ev.price * b.quantity).toFixed(2)}</p>}
-                    <span className={`inline-block mt-2 text-sm font-medium ${cancelled ? 'text-red-600' : 'text-green-700'}`}>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-lg font-bold text-slate-900">
+                      {b.quantity} ticket{b.quantity === 1 ? '' : 's'}
+                    </p>
+                    {ev && (
+                      <p className="muted">${(ev.price * b.quantity).toFixed(2)}</p>
+                    )}
+                    <span className={`mt-2 ${cancelled ? 'badge-danger' : 'badge-success'}`}>
                       {cancelled ? 'Cancelled' : 'Confirmed'}
                     </span>
                   </div>
                 </div>
 
                 {cancelled && b.refundAmount > 0 && (
-                  <p className="text-sm text-gray-600 mt-3 pt-3 border-t">
+                  <p className="muted mt-4 pt-4 border-t border-slate-100">
                     ${b.refundAmount.toFixed(2)} was refunded.
                   </p>
                 )}
 
                 {!cancelled && confirming !== b._id && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <p className="text-sm text-gray-600">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mt-5 pt-5 border-t border-slate-100">
+                    <p className="muted flex-1 min-w-[16rem]">
                       {b.refundPreview
-                        ? `Cancel now and you get $${b.refundPreview.amount.toFixed(2)} back (${b.refundPreview.policy.toLowerCase()}).`
+                        ? `Cancel now and you get $${b.refundPreview.amount.toFixed(2)} back, ${b.refundPreview.policy.toLowerCase()}.`
                         : 'This event has already started, so it can no longer be cancelled.'}
                     </p>
                     {b.refundPreview && (
-                      <button
-                        onClick={() => setConfirming(b._id)}
-                        className="bg-red-600 text-white px-4 py-2 rounded shrink-0 ml-4"
-                      >
+                      <button onClick={() => setConfirming(b._id)} className="btn-danger btn-sm">
                         Cancel booking
                       </button>
                     )}
@@ -116,21 +148,24 @@ const MyBookings = () => {
                 )}
 
                 {!cancelled && confirming === b._id && (
-                  <div className="mt-4 pt-4 border-t">
-                    <p className="text-sm mb-3">
+                  <div className="mt-5 pt-5 border-t border-slate-100">
+                    <div className="alert bg-amber-50 border border-amber-200 text-amber-900 mb-3">
                       Cancel this booking? {b.refundPreview.policy} of{' '}
-                      <span className="font-semibold">${b.refundPreview.amount.toFixed(2)}</span>{' '}
-                      will be issued, and {b.quantity} seat{b.quantity === 1 ? '' : 's'} will go back on sale.
-                    </p>
+                      <span className="font-semibold">
+                        ${b.refundPreview.amount.toFixed(2)}
+                      </span>{' '}
+                      will be issued, and {b.quantity} seat
+                      {b.quantity === 1 ? '' : 's'} will go back on sale.
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => cancel(b._id)}
                         disabled={busy === b._id}
-                        className="bg-red-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
+                        className="btn-danger"
                       >
-                        {busy === b._id ? 'Cancelling…' : 'Yes, cancel it'}
+                        {busy === b._id ? 'Cancelling' : 'Yes, cancel it'}
                       </button>
-                      <button onClick={() => setConfirming('')} className="px-4 py-2 rounded border">
+                      <button onClick={() => setConfirming('')} className="btn-secondary">
                         Keep it
                       </button>
                     </div>
@@ -138,11 +173,11 @@ const MyBookings = () => {
                 )}
 
                 {msg.id === b._id && (
-                  <p className={`mt-3 text-sm ${msg.type === 'success' ? 'text-green-700' : 'text-red-600'}`}>
+                  <p className={`mt-4 ${msg.type === 'success' ? 'alert-success' : 'alert-error'}`}>
                     {msg.text}
                   </p>
                 )}
-              </div>
+              </article>
             );
           })}
         </div>

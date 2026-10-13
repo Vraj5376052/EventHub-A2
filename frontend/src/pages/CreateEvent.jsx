@@ -6,15 +6,15 @@ import axiosInstance from '../axiosConfig';
 const CreateEvent = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
- const [formData, setFormData] = useState({
-  title: '',
-  description: '',
-  category: '',
-  venue: '',
-  startsAt: '',
-  capacity: '',
-  price: '',
-});
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    category: '',
+    venue: '',
+    startsAt: '',
+    capacity: '',
+    price: '',
+  });
   const [error, setError] = useState({ field: '', message: '' });
   const [saving, setSaving] = useState(false);
 
@@ -40,56 +40,138 @@ const CreateEvent = () => {
 
   const set = (f) => (e) => setFormData({ ...formData, [f]: e.target.value });
   const errorFor = (f) =>
-    error.field === f ? <p className="text-red-600 text-sm mb-2">{error.message}</p> : null;
+    error.field === f ? <p className="text-sm text-red-600 mt-1">{error.message}</p> : null;
+  const inputClass = (f) =>
+    `input ${error.field === f ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : ''}`;
 
-  if (!user) return <p className="text-center mt-20">Please log in.</p>;
+  if (!user) {
+    return (
+      <div className="page-narrow">
+        <div className="empty-state">
+          <p className="font-medium text-slate-700">Please log in to create an event.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-lg mx-auto mt-10 px-4">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4">Create Event</h1>
+    <div className="max-w-lg mx-auto px-4 py-8">
+      <div className="mb-6">
+        <h1>Create event</h1>
+        <p className="muted mt-1">Published immediately, customers can book straight away.</p>
+      </div>
 
-        <label className="block text-sm font-medium mb-1">Title</label>
-        <input type="text" value={formData.title} onChange={set('title')}
-          className="w-full mb-1 p-2 border rounded" placeholder="Indie Night at The Zoo" />
-        {errorFor('title')}
+      <form onSubmit={handleSubmit} className="card-pad space-y-4">
+        <div>
+          <label className="label" htmlFor="title">Title</label>
+          <input
+            id="title"
+            type="text"
+            value={formData.title}
+            onChange={set('title')}
+            className={inputClass('title')}
+            placeholder="Indie Night at The Zoo"
+          />
+          {errorFor('title')}
+        </div>
 
-        <label className="block text-sm font-medium mb-1 mt-3">Description</label>
-        <textarea value={formData.description} onChange={set('description')} rows="3"
-          className="w-full mb-1 p-2 border rounded" placeholder="Optional" />
+        <div>
+          <label className="label" htmlFor="description">Description</label>
+          <textarea
+            id="description"
+            value={formData.description}
+            onChange={set('description')}
+            rows="3"
+            className="input"
+            placeholder="Optional"
+          />
+        </div>
 
-        <label className="block text-sm font-medium mb-1 mt-3">Category</label>
-        <input type="text" value={formData.category} onChange={set('category')} 
-          className="w-full mb-1 p-2 border rounded" placeholder="e.g. Music, Sports, Workshop"/>
+        <div>
+          <label className="label" htmlFor="category">Category</label>
+          <input
+            id="category"
+            type="text"
+            value={formData.category}
+            onChange={set('category')}
+            className="input"
+            placeholder="Music, sports, workshop"
+          />
+          <p className="muted mt-1">Customers filter by this. Left blank it becomes "general".</p>
+        </div>
 
-        <label className="block text-sm font-medium mb-1 mt-3">Venue</label>
-        <input type="text" value={formData.venue} onChange={set('venue')}
-          className="w-full mb-1 p-2 border rounded" placeholder="The Zoo, Fortitude Valley" />
-        {errorFor('venue')}
+        <div>
+          <label className="label" htmlFor="venue">Venue</label>
+          <input
+            id="venue"
+            type="text"
+            value={formData.venue}
+            onChange={set('venue')}
+            className={inputClass('venue')}
+            placeholder="The Zoo, Fortitude Valley"
+          />
+          {errorFor('venue')}
+        </div>
 
-        <label className="block text-sm font-medium mb-1 mt-3">Date and time</label>
-        <input type="datetime-local" value={formData.startsAt} onChange={set('startsAt')}
-          className="w-full mb-1 p-2 border rounded" />
-        {errorFor('startsAt')}
+        <div>
+          <label className="label" htmlFor="startsAt">Date and time</label>
+          <input
+            id="startsAt"
+            type="datetime-local"
+            value={formData.startsAt}
+            onChange={set('startsAt')}
+            className={inputClass('startsAt')}
+          />
+          {errorFor('startsAt')}
+        </div>
 
-        <label className="block text-sm font-medium mb-1 mt-3">Seat limit</label>
-        <input type="number" min="1" value={formData.capacity} onChange={set('capacity')}
-          className="w-full mb-1 p-2 border rounded" placeholder="60" />
-        {errorFor('capacity')}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label" htmlFor="capacity">Seat limit</label>
+            <input
+              id="capacity"
+              type="number"
+              min="1"
+              value={formData.capacity}
+              onChange={set('capacity')}
+              className={inputClass('capacity')}
+              placeholder="60"
+            />
+            {errorFor('capacity')}
+          </div>
 
-        <label className="block text-sm font-medium mb-1 mt-3">Price (AUD)</label>
-        <input type="number" min="0" step="0.01" value={formData.price} onChange={set('price')}
-          className="w-full mb-1 p-2 border rounded" placeholder="25" />
-        {errorFor('price')}
+          <div>
+            <label className="label" htmlFor="price">Price, AUD</label>
+            <input
+              id="price"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.price}
+              onChange={set('price')}
+              className={inputClass('price')}
+              placeholder="25"
+            />
+            {errorFor('price')}
+          </div>
+        </div>
 
         {!error.field && error.message && (
-          <p className="text-red-600 text-sm mt-3">{error.message}</p>
+          <p className="alert-error">{error.message}</p>
         )}
 
-        <button type="submit" disabled={saving}
-          className="w-full bg-green-600 text-white p-2 rounded mt-5 disabled:bg-gray-400">
-          {saving ? 'Saving…' : 'Create Event'}
-        </button>
+        <div className="flex gap-2 pt-2">
+          <button type="submit" disabled={saving} className="btn-primary flex-1">
+            {saving ? 'Saving' : 'Create event'}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/my-events')}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );
