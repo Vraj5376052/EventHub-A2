@@ -1,4 +1,4 @@
-
+const os = require('os');
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -12,6 +12,18 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Load balancer health check, and the evidence that requests really are spread
+// across instances. The hostname says which one answered.
+// (US-6.1, NFR-05).
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        instance: os.hostname(),
+        uptime: Math.round(process.uptime()),
+    });
+});
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
