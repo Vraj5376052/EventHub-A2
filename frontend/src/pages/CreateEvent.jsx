@@ -6,9 +6,15 @@ import axiosInstance from '../axiosConfig';
 const CreateEvent = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    title: '', description: '', venue: '', startsAt: '', capacity: '', price: '',
-  });
+ const [formData, setFormData] = useState({
+  title: '',
+  description: '',
+  category: '',
+  venue: '',
+  startsAt: '',
+  capacity: '',
+  price: '',
+});
   const [error, setError] = useState({ field: '', message: '' });
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +57,10 @@ const CreateEvent = () => {
         <label className="block text-sm font-medium mb-1 mt-3">Description</label>
         <textarea value={formData.description} onChange={set('description')} rows="3"
           className="w-full mb-1 p-2 border rounded" placeholder="Optional" />
+
+        <label className="block text-sm font-medium mb-1 mt-3">Category</label>
+        <input type="text" value={formData.category} onChange={set('category')} 
+          className="w-full mb-1 p-2 border rounded" placeholder="e.g. Music, Sports, Workshop"/>
 
         <label className="block text-sm font-medium mb-1 mt-3">Venue</label>
         <input type="text" value={formData.venue} onChange={set('venue')}
