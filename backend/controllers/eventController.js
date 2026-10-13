@@ -2,6 +2,7 @@ const Event = require('../models/Event');
 const Review = require('../models/Review');
 const auditLogger = require('../patterns/AuditLogger');
 const EventSearchFacade = require('../patterns/EventSearchFacade');
+
 const createEvent = async (req, res) => {
     const { title, description, category, venue, startsAt, capacity, price } = req.body;
     try {
@@ -27,13 +28,12 @@ const createEvent = async (req, res) => {
 
         const event = await Event.create({
             organiserId: req.user.id,
-           title: title.trim(),
-description: (description || '').trim(),
-category:
-  typeof category === 'string' && category.trim()
-    ? category.trim().toLowerCase()
-    : 'general',
-venue: venue.trim(),
+            title: title.trim(),
+            description: (description || '').trim(),
+            category: typeof category === 'string' && category.trim()
+                ? category.trim().toLowerCase()
+                : 'general',
+            venue: venue.trim(),
             startsAt: start,
             capacity: Number(capacity),
             price: Number(price),
@@ -71,15 +71,24 @@ const getPublishedEvents = async (req, res) => {
         const reviews = await Review.find({
             eventId: { $in: events.map((event) => event._id) },
         })
-            .populate('reviewerId', 'name')
+            .populate('customerId', 'name')
             .sort({ createdAt: -1 });
 
         const reviewsByEvent = new Map();
         for (const review of reviews) {
             const eventId = review.eventId.toString();
-            reviewsByEvent.set(eventId, [...(reviewsByEvent.get(eventId) || []), review]);
+            // The model stores customerId; the API has always returned
+            // reviewerId, so the field is renamed on the way out rather than
+            // sent twice under both names.
+            const { customerId, ...reviewData } = review.toObject();
+            reviewsByEvent.set(eventId, [
+                ...(reviewsByEvent.get(eventId) || []),
+                { ...reviewData, reviewerId: customerId },
+            ]);
         }
 
+        // The facade returns plain aggregation results, so the event is spread
+        // directly rather than through toObject().
         return res.json(
             events.map((event) => ({
                 ...event,
@@ -92,4 +101,5 @@ const getPublishedEvents = async (req, res) => {
             .json({ message: error.message });
     }
 };
+
 module.exports = { createEvent, getMyEvents, getPublishedEvents };

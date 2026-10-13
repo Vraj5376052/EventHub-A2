@@ -1,6 +1,6 @@
-const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const Review = require('../models/Review');
+const reviewMiddlewareManager = require('../middleware/review');
 
 const addReview = async (req, res) => {
     const body = req.body || {};
@@ -22,18 +22,14 @@ const addReview = async (req, res) => {
             return res.status(400).json({ message: 'Reviews are available after the event has started' });
         }
 
-        const booking = await Booking.findOne({
-            eventId: event._id,
-            customerId: req.user.id,
-            status: 'confirmed',
-        });
-        if (!booking) {
-            return res.status(403).json({ message: 'A confirmed booking is required to review this event' });
+        req.reviewEvent = event;
+        if (!(await reviewMiddlewareManager.process(req, res))) {
+            return;
         }
 
         const review = await Review.create({
             eventId: event._id,
-            reviewerId: req.user.id,
+            customerId: req.user.id,
             rating,
             comment: comment.trim(),
         });
