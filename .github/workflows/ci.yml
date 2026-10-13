@@ -40,11 +40,14 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    # One job per instance, in parallel. fail-fast is off on purpose: a
-    # problem on one instance must not cancel the deploy to the other, which
-    # is the same independence NFR-05 asks for at runtime.
+    # One instance at a time, rolling. The frontend process has to stop while
+    # its dependencies are replaced, so deploying both instances at once would
+    # take the whole site down together; max-parallel keeps one healthy target
+    # behind the ALB throughout (NFR-05). fail-fast stays off so a problem on
+    # one instance does not cancel the deploy to the other.
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         label: [instance-a, instance-b]
 
@@ -68,6 +71,12 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --omit=dev
         working-directory: /home/ubuntu/EventHub-A2/backend
+
+      # The dev server writes its build cache inside node_modules, so it must
+      # stop before npm ci can wipe the folder; the first deploy failed with
+      # ENOTEMPTY racing against it. The reload step below starts it again.
+      - name: Stop the frontend while its dependencies are replaced
+        run: pm2 stop eventhub-web || true
 
       - name: Install frontend dependencies
         run: npm ci
