@@ -6,6 +6,20 @@ const EventSearchFacade = require('../patterns/EventSearchFacade');
 const createEvent = async (req, res) => {
     const { title, description, category, venue, startsAt, capacity, price } = req.body;
     try {
+const allowedCategories = ['music', 'sports', 'workshop', 'other'];
+
+if (
+  typeof category !== 'string' ||
+  !allowedCategories.includes(category.trim().toLowerCase())
+) {
+  return res.status(400).json({
+    field: 'category',
+    message: 'Category must be one of: music, sports, workshop, other'
+  });
+}
+
+const normalizedCategory = category.trim().toLowerCase();
+
         if (!title || title.trim().length < 3 || title.trim().length > 100) {
             return res.status(400).json({ field: 'title', message: 'Title must be between 3 and 100 characters' });
         }
@@ -30,9 +44,8 @@ const createEvent = async (req, res) => {
             organiserId: req.user.id,
             title: title.trim(),
             description: (description || '').trim(),
-            category: typeof category === 'string' && category.trim()
-                ? category.trim().toLowerCase()
-                : 'general',
+            category: normalizedCategory,
+
             venue: venue.trim(),
             startsAt: start,
             capacity: Number(capacity),

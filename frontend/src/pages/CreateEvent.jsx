@@ -87,18 +87,30 @@ const CreateEvent = () => {
           />
         </div>
 
-        <div>
-          <label className="label" htmlFor="category">Category</label>
-          <input
-            id="category"
-            type="text"
-            value={formData.category}
-            onChange={set('category')}
-            className="input"
-            placeholder="Music, sports, workshop"
-          />
-          <p className="muted mt-1">Customers filter by this. Left blank it becomes "general".</p>
-        </div>
+<div>
+  <label className="label" htmlFor="category">
+    Category
+  </label>
+
+  <select
+    id="category"
+    value={formData.category}
+    onChange={set('category')}
+    className="input"
+    required
+  >
+    <option value="">Select a category</option>
+    <option value="music">Music</option>
+    <option value="sports">Sports</option>
+    <option value="workshop">Workshop</option>
+    <option value="other">Other</option>
+  </select>
+
+  <p className="muted mt-1">
+    Please select a category for your event.
+  </p>
+</div>
+
 
         <div>
           <label className="label" htmlFor="venue">Venue</label>

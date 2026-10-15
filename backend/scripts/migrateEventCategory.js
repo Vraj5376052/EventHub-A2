@@ -6,14 +6,16 @@ const dotenv = require('dotenv');
 // backfill, and { category: 'general' } does not match a document where the
 // key is absent. Without this the category filter returns nothing for every
 // value, including 'general'. Same shape as migrateReviewCustomerId.
-const migrateEventCategory = async (collection) => {
-    const result = await collection.updateMany(
-        { category: { $exists: false } },
-        { $set: { category: 'general' } }
-    );
 
-    return result.modifiedCount;
+const migrateEventCategory = async (collection) => {
+  const result = await collection.updateMany(
+    { category: { $exists: false } },
+    { $set: { category: 'other' } }
+  );
+
+  return result.modifiedCount;
 };
+
 
 const run = async () => {
     dotenv.config();
@@ -25,7 +27,7 @@ const run = async () => {
     try {
         const collection = mongoose.connection.collection('events');
         const modified = await migrateEventCategory(collection);
-        console.log(`Event category migration complete; ${modified} event(s) backfilled to "general".`);
+        console.log(`Event category migration complete; ${modified} event(s) backfilled to "other".`);
     } finally {
         await mongoose.disconnect();
     }
