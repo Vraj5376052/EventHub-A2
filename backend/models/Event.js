@@ -4,7 +4,17 @@ const eventSchema = new mongoose.Schema({
     organiserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true, minlength: 3, maxlength: 100 },
     description: { type: String, default: '' },
-    category: { type: String, trim: true, lowercase: true, default: 'general' },
+category: {
+  type: String,
+  required: [true, 'Category is required'],
+  trim: true,
+  lowercase: true,
+  enum: {
+    values: ['music', 'sports', 'workshop', 'other'],
+    message: 'Invalid category'
+  }
+},
+
     venue: { type: String, required: true },
     startsAt: { type: Date, required: true },
     capacity: { type: Number, required: true, min: 1, max: 10000 },
@@ -14,4 +24,4 @@ const eventSchema = new mongoose.Schema({
 }, { timestamps: true });
 eventSchema.index({ category: 1 });
 
-module.exports = mongoose.model('Event', eventSchema); 
+module.exports = mongoose.model('Event', eventSchema);

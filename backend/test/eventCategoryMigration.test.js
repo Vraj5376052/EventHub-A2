@@ -16,7 +16,7 @@ describe('event category backfill (FR-04)', () => {
             category: { $exists: false },
         });
         expect(updateMany.firstCall.args[1]).to.deep.equal({
-            $set: { category: 'general' },
+            $set: { category: 'other' },
         });
         expect(modified).to.equal(9);
     });
