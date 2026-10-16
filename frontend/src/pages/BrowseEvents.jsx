@@ -361,7 +361,7 @@ const BrowseEvents = () => {
                   </p>
                 </div>
 
-                {user.role === 'customer' && !soldOut && (
+                {user.role === 'customer' && !soldOut && new Date(ev.startsAt) > new Date() && (
                   <div className="mt-5 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-5">
                     <div>
                       <label className="label" htmlFor={`qty-${ev._id}`}>Tickets</label>

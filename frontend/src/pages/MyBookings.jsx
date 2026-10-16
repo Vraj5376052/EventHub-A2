@@ -137,7 +137,7 @@ const MyBookings = () => {
                     <p className="muted flex-1 min-w-[16rem]">
                       {b.refundPreview
                         ? `Cancel now and you get $${b.refundPreview.amount.toFixed(2)} back, ${b.refundPreview.policy.toLowerCase()}.`
-                        : 'This event has already started, so it can no longer be cancelled.'}
+                        : 'This event has already ended, so it can no longer be cancelled.'}
                     </p>
                     {b.refundPreview && (
                       <button onClick={() => setConfirming(b._id)} className="btn-danger btn-sm">
