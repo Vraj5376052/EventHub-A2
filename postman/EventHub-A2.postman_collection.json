@@ -6,7 +6,7 @@
   },
   "item": [
     {
-      "name": "1. Authentication (FR-01 baseline)",
+      "name": "1. Authentication (Assessment 1 baseline)",
       "description": "Registration, login and profile. Run these first: the tests save the tokens every other folder depends on.",
       "item": [
         {
@@ -566,7 +566,7 @@
       ]
     },
     {
-      "name": "2. Events (FR-01 baseline)",
+      "name": "2. Events (FR-04, FR-05, FR-06, FR-11)",
       "description": "Event creation and listing. Creates the event the booking folder uses.",
       "item": [
         {
@@ -596,7 +596,7 @@
             "description": "Organiser only. Also produces an EVENT_CREATED audit entry (FR-10), which the audit folder reads back.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Postman Test Concert\",\n  \"description\": \"Created by the Postman run.\",\n  \"venue\": \"QUT Gardens Point\",\n  \"startsAt\": \"2027-06-01T19:00:00.000Z\",\n  \"capacity\": 10,\n  \"price\": 50\n}",
+              "raw": "{\n  \"title\": \"Postman Test Concert\",\n  \"description\": \"Created by the Postman run.\",\n  \"category\": \"music\",\n  \"venue\": \"QUT Gardens Point\",\n  \"startsAt\": \"2027-06-01T19:00:00.000Z\",\n  \"capacity\": 10,\n  \"price\": 50\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -649,7 +649,7 @@
             "description": "Small capacity, so booking it triggers the CapacityWarning notification to the organiser (FR-09).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Postman Small Room\",\n  \"description\": \"Two seats only.\",\n  \"venue\": \"QUT Kelvin Grove\",\n  \"startsAt\": \"2027-06-02T19:00:00.000Z\",\n  \"capacity\": 2,\n  \"price\": 20\n}",
+              "raw": "{\n  \"title\": \"Postman Small Room\",\n  \"description\": \"Two seats only.\",\n  \"category\": \"workshop\",\n  \"venue\": \"QUT Kelvin Grove\",\n  \"startsAt\": \"2027-06-02T19:00:00.000Z\",\n  \"capacity\": 2,\n  \"price\": 20\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -698,7 +698,7 @@
             "description": "Error case. requireRole('organiser').",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Not Allowed\",\n  \"venue\": \"Nowhere\",\n  \"startsAt\": \"2027-06-01T19:00:00.000Z\",\n  \"capacity\": 5,\n  \"price\": 10\n}",
+              "raw": "{\n  \"title\": \"Not Allowed\",\n  \"category\": \"other\",\n  \"venue\": \"Nowhere\",\n  \"startsAt\": \"2027-06-01T19:00:00.000Z\",\n  \"capacity\": 5,\n  \"price\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -746,7 +746,7 @@
             "description": "Error case. Server-side validation.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Yesterday's Gig\",\n  \"venue\": \"QUT\",\n  \"startsAt\": \"2020-01-01T19:00:00.000Z\",\n  \"capacity\": 5,\n  \"price\": 10\n}",
+              "raw": "{\n  \"title\": \"Yesterday's Gig\",\n  \"category\": \"other\",\n  \"venue\": \"QUT\",\n  \"startsAt\": \"2020-01-01T19:00:00.000Z\",\n  \"capacity\": 5,\n  \"price\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -847,6 +847,353 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create rejects an unknown category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organiserToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ]
+            },
+            "description": "FR-04. Category is validated against the allowed list before anything is written, so an unknown value never reaches the model.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bad Category Event\",\n  \"category\": \"pottery\",\n  \"venue\": \"QUT Gardens Point\",\n  \"startsAt\": \"2027-07-01T19:00:00.000Z\",\n  \"capacity\": 10,\n  \"price\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"names the category field\", function () {",
+                  "    pm.expect(pm.response.json().field).to.eql(\"category\");",
+                  "});",
+                  "pm.test(\"lists the allowed values\", function () {",
+                  "    pm.expect(pm.response.json().message).to.contain(\"music\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search by category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?category=music",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "music"
+                }
+              ]
+            },
+            "description": "FR-05. The category filter, applied by the query builder behind the search facade."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"every result is in that category\", function () {",
+                  "    pm.response.json().forEach(function (e) {",
+                  "        pm.expect(e.category).to.eql(\"music\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search by keyword",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?keyword=Postman",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "Postman"
+                }
+              ]
+            },
+            "description": "FR-05. Keyword search across the event text."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"returns a list\", function () {",
+                  "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sort by price",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?sort=price",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "price"
+                }
+              ]
+            },
+            "description": "FR-06. Sorting is one of date, price or seatsRemaining."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"prices are not decreasing\", function () {",
+                  "    const prices = pm.response.json().map(e => e.price);",
+                  "    pm.expect(prices).to.eql(prices.slice().sort((a, b) => a - b));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter to past events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?when=past",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "when",
+                  "value": "past"
+                }
+              ]
+            },
+            "description": "FR-11. The timeframe filter. Past events are the ones that can be reviewed, so folder 4 reads this back."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"every result has already started\", function () {",
+                  "    pm.response.json().forEach(function (e) {",
+                  "        pm.expect(new Date(e.startsAt).getTime()).to.be.below(Date.now());",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search rejects an invalid sort",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?sort=cheapest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "cheapest"
+                }
+              ]
+            },
+            "description": "Error case. The query builder refuses a sort it does not know rather than silently falling back to the default."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"names the valid sorts\", function () {",
+                  "    pm.expect(pm.response.json().message).to.contain(\"date\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search rejects an invalid timeframe",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?when=yesterday",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "when",
+                  "value": "yesterday"
+                }
+              ]
+            },
+            "description": "Error case. Same guard on the timeframe."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"names the valid timeframes\", function () {",
+                  "    pm.expect(pm.response.json().message).to.contain(\"upcoming\");",
+                  "});"
                 ]
               }
             }
@@ -1318,7 +1665,378 @@
       ]
     },
     {
-      "name": "4. Notifications (FR-09, US-4.1 and US-4.2)",
+      "name": "4. Reviews (FR-07, FR-08)",
+      "description": "Reviews on events that have already finished, and the guards around who may leave one.\n\nThis folder needs the seeded fixtures: a past event and a confirmed booking for reviewer@eventhub.test. Run backend/scripts/seedDemoFixtures.js once against whichever database you are pointing at, then set seedEventId, reviewerEmail and seedPassword from what it prints. The demo server in member4/demo-server does this for you.\n\nRun the folder against a freshly seeded database. The first request leaves a review, so a second run on the same data finds it already there and the 201 becomes a 409.",
+      "item": [
+        {
+          "name": "Log in as the seeded reviewer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "This customer holds a confirmed booking on the seeded past event, which is what entitles them to review it.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{reviewerEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set(\"reviewerToken\", pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Leave a review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{seedEventId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{seedEventId}}",
+                "reviews"
+              ]
+            },
+            "description": "FR-07. The happy path, once the event has finished and the reviewer has a confirmed booking.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Well run and started on time.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", function () { pm.response.to.have.status(201); });",
+                  "const r = pm.response.json().review;",
+                  "pm.test(\"stores the rating and the comment\", function () {",
+                  "    pm.expect(r.rating).to.eql(5);",
+                  "    pm.expect(r.comment).to.eql(\"Well run and started on time.\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rating outside 1 to 5 is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{seedEventId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{seedEventId}}",
+                "reviews"
+              ]
+            },
+            "description": "Error case. Validated before the database is touched.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 9,\n  \"comment\": \"Out of range.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"names the rating field\", function () {",
+                  "    pm.expect(pm.response.json().field).to.eql(\"rating\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A second review from the same customer is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{seedEventId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{seedEventId}}",
+                "reviews"
+              ]
+            },
+            "description": "FR-07. One review per customer per event, enforced by the middleware chain and backed by a unique index so a race cannot slip a second one through.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 3,\n  \"comment\": \"Trying again.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"says it is already reviewed\", function () {",
+                  "    pm.expect(pm.response.json().message).to.contain(\"already reviewed\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A customer with no booking is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{seedEventId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{seedEventId}}",
+                "reviews"
+              ]
+            },
+            "description": "FR-07. The customer registered in folder 1 holds no booking on the seeded event, so the booking guard in the middleware chain refuses them.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"I did not attend.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"asks for a confirmed booking\", function () {",
+                  "    pm.expect(pm.response.json().message).to.contain(\"confirmed booking\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An organiser is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{organiserToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{seedEventId}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{seedEventId}}",
+                "reviews"
+              ]
+            },
+            "description": "FR-07. Organisers cannot review. Worth noting that requireRole('customer') on the route refuses first, so the organiser guard inside the middleware chain is never reached through this endpoint. Both answer 403, so the rule holds either way, but only the route check is actually exercised.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"My own event.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 403\", function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reviews and the average rating come back with the event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?when=past",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "when",
+                  "value": "past"
+                }
+              ]
+            },
+            "description": "FR-08. Reviews are not a separate endpoint. Each event in the listing carries its reviews and the average of their ratings, rounded to one decimal place."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const seeded = pm.response.json().find(e => e._id === pm.variables.get(\"seedEventId\"));",
+                  "pm.test(\"the seeded event is in the past listing\", function () {",
+                  "    pm.expect(seeded).to.not.be.undefined;",
+                  "});",
+                  "pm.test(\"it carries the review that was left\", function () {",
+                  "    pm.expect(seeded.reviews).to.be.an(\"array\").that.is.not.empty;",
+                  "});",
+                  "pm.test(\"it reports an average rating\", function () {",
+                  "    pm.expect(seeded.averageRating).to.eql(5);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Notifications (FR-09, US-4.1 and US-4.2)",
       "description": "My feature. Reads back the notifications produced by the bookings above, and proves one user cannot reach another user's rows.",
       "item": [
         {
@@ -1716,7 +2434,7 @@
       ]
     },
     {
-      "name": "5. Audit trail (FR-10, NFR-04, US-4.3)",
+      "name": "6. Audit trail (FR-10, NFR-04, US-4.3)",
       "description": "My feature. The Singleton AuditLogger's output, read back through the admin only endpoint.\n\nThe 200 requests need an admin account. There is no way to register one on purpose, so create it directly in MongoDB and put its token in the adminToken variable. The 401 and 403 requests run without it.",
       "item": [
         {
@@ -2139,6 +2857,22 @@
     },
     {
       "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "reviewerToken",
+      "value": ""
+    },
+    {
+      "key": "reviewerEmail",
+      "value": "reviewer@eventhub.test"
+    },
+    {
+      "key": "seedPassword",
+      "value": ""
+    },
+    {
+      "key": "seedEventId",
       "value": ""
     }
   ]
