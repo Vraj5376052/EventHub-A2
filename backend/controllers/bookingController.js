@@ -26,11 +26,13 @@ const createBooking = async (req, res) => {
         }
 
         // Atomic: check availability and reserve the seats in ONE database operation.
-        // Two people booking the last seat cannot both succeed.
+        // Two people booking the last seat cannot both succeed. Bookings close
+        // the moment the event starts, same boundary the browse page uses (FR-11).
         const event = await Event.findOneAndUpdate(
             {
                 _id: eventId,
                 status: 'published',
+                startsAt: { $gt: new Date() },
                 $expr: { $lte: [{ $add: ['$bookedSeats', qty] }, '$capacity'] },
             },
             { $inc: { bookedSeats: qty } },
@@ -41,6 +43,9 @@ const createBooking = async (req, res) => {
             const existing = await Event.findById(eventId);
             if (!existing || existing.status !== 'published') {
                 return res.status(400).json({ message: 'This event is not open for booking' });
+            }
+            if (new Date(existing.startsAt) <= Date.now()) {
+                return res.status(400).json({ message: 'This event has already ended, bookings are closed' });
             }
             const remaining = existing.capacity - existing.bookedSeats;
             return res.status(400).json({
