@@ -1,0 +1,17 @@
+name: Maintenance
+
+on: workflow_dispatch
+
+jobs:
+  free-disk-instance-a:
+    name: Free disk on instance-a
+    runs-on: [self-hosted, instance-a]
+    steps:
+      - name: Clean caches and logs, then report disk
+        run: |
+          npm cache clean --force || true
+          pm2 flush || true
+          sudo apt-get clean
+          sudo journalctl --vacuum-size=100M
+          sudo rm -rf /tmp/* || true
+          df -h /
