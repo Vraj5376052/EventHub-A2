@@ -228,6 +228,8 @@ describe('review middleware manager', () => {
         const inserted = { process: async (req, res, next) => { calls.push('inserted'); return next(); } };
         const last = { process: async (req, res, next) => { calls.push('last'); return next(); } };
         const manager = new ReviewMiddlewareManager([first, last]);
+        expect(manager.middlewares).to.equal(undefined);
+        expect(Object.keys(manager)).to.deep.equal([]);
         manager.add(inserted, 1);
 
         expect(await manager.process({}, mockRes())).to.equal(true);
